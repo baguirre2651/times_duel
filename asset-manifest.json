@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/times_duel/static/css/main.04b3d33f.chunk.css",
+    "main.js": "/times_duel/static/js/main.e0b641ad.chunk.js",
+    "main.js.map": "/times_duel/static/js/main.e0b641ad.chunk.js.map",
+    "runtime~main.js": "/times_duel/static/js/runtime~main.165d5de4.js",
+    "runtime~main.js.map": "/times_duel/static/js/runtime~main.165d5de4.js.map",
+    "static/js/2.5882f51d.chunk.js": "/times_duel/static/js/2.5882f51d.chunk.js",
+    "static/js/2.5882f51d.chunk.js.map": "/times_duel/static/js/2.5882f51d.chunk.js.map",
+    "index.html": "/times_duel/index.html",
+    "precache-manifest.88fbf74d25a93faadf8e5ad5e67387ce.js": "/times_duel/precache-manifest.88fbf74d25a93faadf8e5ad5e67387ce.js",
+    "service-worker.js": "/times_duel/service-worker.js",
+    "static/css/main.04b3d33f.chunk.css.map": "/times_duel/static/css/main.04b3d33f.chunk.css.map"
+  }
+}
