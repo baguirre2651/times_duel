@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/times_duel/precache-manifest.51e35751dd419085fe72edf1e77d31b7.js"
+  "/times_duel/precache-manifest.ede47384c3d6eee449c7b7de9c7b4993.js"
 );
 
 self.addEventListener('message', (event) => {
