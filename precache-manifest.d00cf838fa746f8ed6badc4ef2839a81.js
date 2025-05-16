@@ -1,18 +1,18 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "ff8f3d17c2acbcf080db560e492e887d",
+    "revision": "d63c1107a735452072eaceb2df9fddf1",
     "url": "/times_duel/index.html"
   },
   {
-    "revision": "373ae05100ac8afb61e9",
-    "url": "/times_duel/static/css/main.49cae040.chunk.css"
+    "revision": "7f3d361a99102ae51f0e",
+    "url": "/times_duel/static/css/main.9eefb0b4.chunk.css"
   },
   {
     "revision": "47850fe9c8be03f92a97",
     "url": "/times_duel/static/js/2.42b59765.chunk.js"
   },
   {
-    "revision": "373ae05100ac8afb61e9",
+    "revision": "7f3d361a99102ae51f0e",
     "url": "/times_duel/static/js/main.0c3351af.chunk.js"
   },
   {
