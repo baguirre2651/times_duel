@@ -1,14 +1,14 @@
 {
   "files": {
     "main.css": "/times_duel/static/css/main.3c8e0974.chunk.css",
-    "main.js": "/times_duel/static/js/main.86828199.chunk.js",
-    "main.js.map": "/times_duel/static/js/main.86828199.chunk.js.map",
+    "main.js": "/times_duel/static/js/main.4d5f1498.chunk.js",
+    "main.js.map": "/times_duel/static/js/main.4d5f1498.chunk.js.map",
     "runtime~main.js": "/times_duel/static/js/runtime~main.165d5de4.js",
     "runtime~main.js.map": "/times_duel/static/js/runtime~main.165d5de4.js.map",
     "static/js/2.42b59765.chunk.js": "/times_duel/static/js/2.42b59765.chunk.js",
     "static/js/2.42b59765.chunk.js.map": "/times_duel/static/js/2.42b59765.chunk.js.map",
     "index.html": "/times_duel/index.html",
-    "precache-manifest.ede47384c3d6eee449c7b7de9c7b4993.js": "/times_duel/precache-manifest.ede47384c3d6eee449c7b7de9c7b4993.js",
+    "precache-manifest.b831c4361d1c9986d2019d21bf2af013.js": "/times_duel/precache-manifest.b831c4361d1c9986d2019d21bf2af013.js",
     "service-worker.js": "/times_duel/service-worker.js",
     "static/css/main.3c8e0974.chunk.css.map": "/times_duel/static/css/main.3c8e0974.chunk.css.map"
   }
