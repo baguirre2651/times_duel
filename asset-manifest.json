@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/times_duel/static/css/main.1e02d4cc.css",
-    "main.js": "/times_duel/static/js/main.0a09abec.js",
+    "main.js": "/times_duel/static/js/main.7320dcdc.js",
     "index.html": "/times_duel/index.html",
     "main.1e02d4cc.css.map": "/times_duel/static/css/main.1e02d4cc.css.map",
-    "main.0a09abec.js.map": "/times_duel/static/js/main.0a09abec.js.map"
+    "main.7320dcdc.js.map": "/times_duel/static/js/main.7320dcdc.js.map"
   },
   "entrypoints": [
     "static/css/main.1e02d4cc.css",
-    "static/js/main.0a09abec.js"
+    "static/js/main.7320dcdc.js"
   ]
 }
