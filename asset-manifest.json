@@ -1,13 +1,27 @@
 {
   "files": {
-    "main.css": "/times_duel/static/css/main.1e02d4cc.css",
-    "main.js": "/times_duel/static/js/main.d562ed7e.js",
+    "main.css": "/times_duel/static/css/main.bace85f1.css",
+    "main.js": "/times_duel/static/js/main.14c8c1c5.js",
+    "static/media/robot-surprised.png": "/times_duel/static/media/robot-surprised.94e75bb51c2be607746b.png",
+    "static/media/robot-pull.png": "/times_duel/static/media/robot-pull.26210e5d9c9e918240b4.png",
+    "static/media/player-surprised.png": "/times_duel/static/media/player-surprised.f09923228f80bc409b71.png",
+    "static/media/robot-win.png": "/times_duel/static/media/robot-win.9158acdae228f536b0fe.png",
+    "static/media/player-strain.png": "/times_duel/static/media/player-strain.198b57f516f8c65cfe5e.png",
+    "static/media/robot-strain.png": "/times_duel/static/media/robot-strain.d6d608bcc7694bfaf208.png",
+    "static/media/robot-idle.png": "/times_duel/static/media/robot-idle.9f01ea818cf7a967e446.png",
+    "static/media/player-win.png": "/times_duel/static/media/player-win.bb5504d57dd9cdc7207c.png",
+    "static/media/player-pull.png": "/times_duel/static/media/player-pull.8951b66156679ca99bca.png",
+    "static/media/player-happy.png": "/times_duel/static/media/player-happy.8e93e27578cfe9f55b9d.png",
+    "static/media/player-worried.png": "/times_duel/static/media/player-worried.46b14461c1812a8807e4.png",
+    "static/media/player-idle.png": "/times_duel/static/media/player-idle.af7aef6d26641c6cb677.png",
+    "static/media/robot-worried.png": "/times_duel/static/media/robot-worried.14781161416da90f0b3e.png",
+    "static/media/robot-happy.png": "/times_duel/static/media/robot-happy.576952b81bb831976d37.png",
     "index.html": "/times_duel/index.html",
-    "main.1e02d4cc.css.map": "/times_duel/static/css/main.1e02d4cc.css.map",
-    "main.d562ed7e.js.map": "/times_duel/static/js/main.d562ed7e.js.map"
+    "main.bace85f1.css.map": "/times_duel/static/css/main.bace85f1.css.map",
+    "main.14c8c1c5.js.map": "/times_duel/static/js/main.14c8c1c5.js.map"
   },
   "entrypoints": [
-    "static/css/main.1e02d4cc.css",
-    "static/js/main.d562ed7e.js"
+    "static/css/main.bace85f1.css",
+    "static/js/main.14c8c1c5.js"
   ]
 }
