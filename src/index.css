@@ -388,6 +388,11 @@ button:disabled {
      2. question   — the hero, takes the leftover space
      3. answer row — the action, parked at the bottom above the keyboard
    Feedback and streak are overlays so they never reflow those three zones. */
+.game-shell--match {
+  /* Space reserved at the bottom for the anchored answer row. */
+  --answer-block-h: calc(clamp(4rem, 10vw, 5.25rem) + 1.5rem);
+}
+
 .game-shell--match .game-board {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -413,10 +418,33 @@ button:disabled {
 .game-shell--match .question-panel {
   grid-row: 2;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-rows: minmax(0, 1fr);
   align-items: center;
   min-height: 0;
   gap: clamp(0.6rem, 2.5vh, 1.25rem);
+  /* Leave room for the anchored answer row below. */
+  padding-bottom: var(--answer-block-h, 7rem);
+}
+
+/* The answer row is anchored to the bottom of the shell rather than being the
+   last item in the flex/grid chain. As the last child it could be pushed out of
+   an overflow:hidden container by any height miscalculation above it, which took
+   the input off screen entirely and left nothing to tap — so no keyboard.
+   Anchored, it is reachable no matter what the rest of the layout does. */
+.game-shell--match .answer-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(0.5rem, env(safe-area-inset-bottom));
+  width: min(100%, 46rem);
+  margin: 0 auto;
+  z-index: 5;
+}
+
+/* Hidden during play: it is one-time guidance competing for the scarcest space
+   on the screen, and it sits exactly where the keyboard appears. */
+.game-shell--match .answer-hint {
+  display: none;
 }
 
 /* Reads as a game HUD element rather than text floating on the sky, and the
@@ -1014,6 +1042,10 @@ button:disabled {
     line-height: 1.08;
   }
 
+  .game-shell--match {
+    --answer-block-h: calc(3.55rem + 1.25rem);
+  }
+
   .answer-row {
     --control-h: 3.55rem;
     gap: 0.6rem;
@@ -1105,6 +1137,10 @@ button:disabled {
 
   .question-text {
     font-size: 1.38rem;
+  }
+
+  .game-shell--match {
+    --answer-block-h: calc(3.1rem + 1rem);
   }
 
   .answer-row {
