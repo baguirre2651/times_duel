@@ -392,7 +392,12 @@ button:disabled {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: clamp(0.75rem, 3vh, 1.75rem);
-  height: 100%;
+  /* Must be flex-sized, never height: 100%. The shell is a column flex container
+     with the title row above this board, so 100% resolves to the full shell
+     height and pushes the answer row past the bottom, where overflow: hidden
+     clipped it off screen entirely — taking the input, and the keyboard, with it. */
+  flex: 1 1 auto;
+  height: auto;
   min-height: 0;
   position: relative;
 }
