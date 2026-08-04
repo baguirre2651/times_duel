@@ -1,4 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
+import knightsGif from './knights.gif';
+
+const audioUrl = file => `${import.meta.env.BASE_URL}${file}`;
+
+const backgroundTracks = [
+  'hungarian_dance_no5.mp3',
+  'persona.mp3',
+  'opera.mp3',
+  'tekken.mp3',
+  'raito.mp3'
+];
 
 const getRandomQuestion = () => {
   const a = Math.floor(Math.random() * 12) + 1;
@@ -51,20 +62,32 @@ const createConfetti = () => {
   }, 3000);
 };
 
-const playSound = (type) => {
-  try {
-    if (type === 'win') {
-      createConfetti();
-    }
-  } catch (e) {
-    // Ignore errors
+const vibrate = (pattern = [100]) => {
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    navigator.vibrate(pattern);
   }
 };
 
-const vibrate = (pattern = [100]) => {
-  if (navigator.vibrate) {
-    navigator.vibrate(pattern);
+const playAudio = (audio, { src, volume = 1, loop = false, restart = false, label = 'audio' } = {}) => {
+  if (!audio) return Promise.resolve(false);
+
+  if (src && audio.src !== new URL(src, window.location.href).href) {
+    audio.src = src;
+    audio.load();
   }
+
+  audio.loop = loop;
+  audio.volume = volume;
+  audio.muted = false;
+
+  if (restart) {
+    try { audio.currentTime = 0; } catch {}
+  }
+
+  return audio.play().then(() => true).catch(error => {
+    console.warn(`${label} could not start:`, error);
+    return false;
+  });
 };
 
 export default function TimesDuel() {
@@ -90,12 +113,25 @@ export default function TimesDuel() {
   const [fastestWin, setFastestWin] = useState(999);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [gameStats, setGameStats] = useState({ totalQuestions: 0, correctAnswers: 0, duration: 0 });
-  const [newAchievements, setNewAchievements] = useState([]);
   const [roomCode, setRoomCode] = useState('');
   const [waitingForFriend, setWaitingForFriend] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
   
-  const musicRef = useRef(null);
+  // Audio refs
+  const backgroundAudioRefs = useRef([]);
+  const correctRef = useRef(null);
+  const wrongRef   = useRef(null);
+  const victoryRef = useRef(null);
+  const loseRef    = useRef(null);
+  const introRef = useRef(null);
   const inputRef = useRef(null);
+  const lastBackgroundTrackRef = useRef(-1);
+  const currentBackgroundTrackRef = useRef(null);
+  const introUnlockedRef = useRef(false);
+  const startingGameRef = useRef(false);
+
+  // Mobile detection
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   const achievements = [
     { id: 'first_win', title: 'First Victory', description: 'Win your first game', icon: '🎯', unlocked: playerWins >= 1 },
@@ -105,15 +141,32 @@ export default function TimesDuel() {
     { id: 'speed_demon', title: 'Speed Demon', description: 'Win in under 30 seconds', icon: '⚡', unlocked: fastestWin < 30 },
   ];
 
-  const generateRoomCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  const generateRoomCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  const stopBackgroundMusic = () => {
+    backgroundAudioRefs.current.forEach(audio => {
+      if (!audio) return;
+      audio.pause();
+      try { audio.currentTime = 0; } catch {}
+    });
   };
 
   const startGame = () => {
+    if (startingGameRef.current) return;
+    startingGameRef.current = true;
+
+    const availableTracks = backgroundTracks
+      .map((_, index) => index)
+      .filter(index => index !== lastBackgroundTrackRef.current);
+    const nextTrackIndex = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+    lastBackgroundTrackRef.current = nextTrackIndex;
+    currentBackgroundTrackRef.current = nextTrackIndex;
+
     setGameActive(true);
     setCountdown(3);
     setHasStarted(false);
     setStatus('counting');
+    setShowWinnerModal(false);
     setPlayerTime(30);
     setOpponentTime(30);
     setTotalGameTime(0);
@@ -123,6 +176,25 @@ export default function TimesDuel() {
     setFeedback(null);
     setQuestionHistory([]);
     setGameStats({ totalQuestions: 0, correctAnswers: 0, duration: 0 });
+
+    if (introRef.current) {
+      introRef.current.pause();
+      try { introRef.current.currentTime = 0; } catch {}
+    }
+    stopBackgroundMusic();
+
+    playAudio(backgroundAudioRefs.current[nextTrackIndex], {
+      volume: 1,
+      loop: true,
+      restart: true,
+      label: `Background music ${backgroundTracks[nextTrackIndex]}`
+    }).then(played => {
+      if (played) setAudioEnabled(true);
+    });
+
+    setTimeout(() => {
+      startingGameRef.current = false;
+    }, 500);
   };
 
   const hostGame = () => {
@@ -137,6 +209,44 @@ export default function TimesDuel() {
     setGameMode('friend');
     setWaitingForFriend(false);
     startGame();
+  };
+
+  const handleStartPointerDown = event => {
+    event.preventDefault();
+    startGame();
+  };
+
+  const goHome = () => {
+    setGameActive(false);
+    setHasStarted(false);
+    setStatus('');
+    setCountdown(null);
+    setWaitingForFriend(false);
+    stopBackgroundMusic();
+    currentBackgroundTrackRef.current = null;
+    playAudio(introRef.current, {
+      volume: 0.35,
+      loop: true,
+      restart: true,
+      label: 'Intro music'
+    }).then(played => {
+      if (played) setAudioEnabled(true);
+    });
+  };
+
+  const unlockAudio = () => {
+    const activeTrack = currentBackgroundTrackRef.current;
+    const target = activeTrack === null
+      ? introRef.current
+      : backgroundAudioRefs.current[activeTrack];
+
+    playAudio(target, {
+      volume: activeTrack === null ? 0.35 : 1,
+      loop: true,
+      label: activeTrack === null ? 'Intro music' : `Background music ${backgroundTracks[activeTrack]}`
+    }).then(played => {
+      if (played) setAudioEnabled(true);
+    });
   };
 
   useEffect(() => {
@@ -154,9 +264,7 @@ export default function TimesDuel() {
     if (!hasStarted || status !== 'Playing...') return;
     const interval = setInterval(() => {
       setPlayerTime(t => Math.max(0, t - 1));
-      if (gameMode === 'cpu') {
-        setOpponentTime(t => Math.max(0, t - 1));
-      }
+      if (gameMode === 'cpu') setOpponentTime(t => Math.max(0, t - 1));
       setTotalGameTime(t => t + 1);
     }, 1000);
     return () => clearInterval(interval);
@@ -172,12 +280,12 @@ export default function TimesDuel() {
     } else if (opponentTime <= 0) {
       winner = 'player';
       setPlayerWins(w => w + 1);
-      playSound('win');
+      createConfetti();
     } else if (totalGameTime >= 180) {
       if (playerTime > opponentTime) {
         winner = 'player';
         setPlayerWins(w => w + 1);
-        playSound('win');
+        createConfetti();
       } else if (playerTime < opponentTime) {
         winner = 'opponent';
         setOpponentWins(w => w + 1);
@@ -185,6 +293,7 @@ export default function TimesDuel() {
         winner = 'tie';
       }
     }
+    
 
     if (winner) {
       setStatus(winner === 'player' ? 'You Won!' : winner === 'opponent' ? 'You Lost!' : "It's a Tie!");
@@ -194,26 +303,37 @@ export default function TimesDuel() {
         correctAnswers: questionHistory.filter(q => q.correct).length,
         duration: totalGameTime,
         won: winner === 'player',
-        accuracy: questionHistory.length > 0 ? Math.round((questionHistory.filter(q => q.correct).length / questionHistory.length) * 100) : 0
+        accuracy: questionHistory.length > 0
+          ? Math.round((questionHistory.filter(q => q.correct).length / questionHistory.length) * 100)
+          : 0
       };
       
       setGameStats(finalGameStats);
       setTotalGames(prev => prev + 1);
-      
-      if (streak > bestStreak) {
-        setBestStreak(streak);
+      if (streak > bestStreak) setBestStreak(streak);
+      if (winner === 'player' && totalGameTime < fastestWin) setFastestWin(totalGameTime);
+
+      stopBackgroundMusic();
+      // 🔊 Play victory/lose sfx
+      if (winner === 'player') {
+        setTimeout(() => {
+          victoryRef.current?.play().catch(()=>{});
+        }, 100);
+      } else if (winner === 'opponent') {
+        setTimeout(() => {
+          loseRef.current?.play().catch(()=>{});
+        }, 100);
       }
-      
-      if (winner === 'player' && totalGameTime < fastestWin) {
-        setFastestWin(totalGameTime);
-      }
-      
+
       setTimeout(() => {
         setShowWinnerModal(true);
         vibrate([200, 100, 200]);
       }, 1500);
     }
-  }, [playerTime, opponentTime, totalGameTime, hasStarted, status, questionHistory, streak, bestStreak, totalGames, fastestWin]);
+  }, [
+    playerTime, opponentTime, totalGameTime, hasStarted, status,
+    questionHistory, streak, bestStreak, totalGames, fastestWin
+  ]);
 
   useEffect(() => {
     if (gameMode !== 'cpu' || status !== 'Playing...') return;
@@ -227,11 +347,111 @@ export default function TimesDuel() {
     return () => clearInterval(cpuInterval);
   }, [gameMode, status]);
 
+  useEffect(() => {
+    document.body.classList.toggle('is-playing', gameActive);
+    return () => document.body.classList.remove('is-playing');
+  }, [gameActive]);
+
+  // Track the visual viewport so the play area shrinks to the space the on-screen
+  // keyboard leaves behind. dvh alone is unreliable on iOS Safari, which keeps
+  // reporting the full height while the keyboard is up.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const root = document.documentElement;
+
+    const sync = () => {
+      const height = vv ? vv.height : window.innerHeight;
+      root.style.setProperty('--app-h', `${height}px`);
+      // How much of the layout viewport the keyboard is covering.
+      const inset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+      root.style.setProperty('--kb-inset', `${inset}px`);
+      root.classList.toggle('kb-open', inset > 120);
+    };
+
+    sync();
+    if (vv) {
+      vv.addEventListener('resize', sync);
+      vv.addEventListener('scroll', sync);
+    }
+    window.addEventListener('resize', sync);
+    window.addEventListener('orientationchange', sync);
+
+    return () => {
+      if (vv) {
+        vv.removeEventListener('resize', sync);
+        vv.removeEventListener('scroll', sync);
+      }
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('orientationchange', sync);
+      root.classList.remove('kb-open');
+    };
+  }, []);
+
+  useEffect(() => {
+    const unlockIntro = () => {
+      if (introUnlockedRef.current || gameActive || waitingForFriend) return;
+      introUnlockedRef.current = true;
+      playAudio(introRef.current, {
+        volume: 0.35,
+        loop: true,
+        label: 'Intro music'
+      }).then(played => {
+        if (played) setAudioEnabled(true);
+      });
+    };
+
+    window.addEventListener('pointerdown', unlockIntro, { once: true });
+    window.addEventListener('keydown', unlockIntro, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockIntro);
+      window.removeEventListener('keydown', unlockIntro);
+    };
+  }, [gameActive, waitingForFriend]);
+
+  // Play intro music on title/main page
+  useEffect(() => {
+    // Only play if we're on the main menu (not in game, not waiting for friend)
+    if (!gameActive && !waitingForFriend) {
+      const timer = setTimeout(() => {
+        const intro = introRef.current;
+        if (intro) {
+          playAudio(intro, {
+            volume: 0.35,
+            loop: true,
+            restart: true,
+            label: 'Intro music'
+          }).then(played => {
+            if (played) setAudioEnabled(true);
+          });
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    } else {
+      // Stop intro music when leaving main menu
+      const intro = introRef.current;
+      if (intro) {
+        intro.pause();
+        intro.currentTime = 0;
+      }
+    }
+  }, [gameActive, waitingForFriend]);
+
   const handleSubmit = () => {
     if (!input.trim() || status !== 'Playing...') return;
     
+    // INSTANT UI UPDATES FIRST (mobile optimization)
     const isCorrect = parseInt(input) === question.answer;
+    setFeedback(isCorrect ? '✅' : '❌');
+    setInput('');
     
+    // IMMEDIATE refocus to keep keyboard open
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+    
+    // Heavy processing after UI updates
     const questionResult = {
       ...question,
       userAnswer: parseInt(input),
@@ -248,29 +468,20 @@ export default function TimesDuel() {
     
     if (isCorrect) {
       setPlayerTime(t => t + 2);
-      if (gameMode === 'cpu') {
-        setOpponentTime(t => Math.max(0, t - 2));
-      }
+      if (gameMode === 'cpu') setOpponentTime(t => Math.max(0, t - 2));
       setStreak(s => s + 1);
-      setFeedback('✅');
-      playSound('correct');
+      correctRef.current?.play().catch(()=>{});
       vibrate([50]);
     } else {
       setStreak(0);
-      setFeedback('❌');
-      playSound('wrong');
+      wrongRef.current?.play().catch(()=>{});
       vibrate([100, 50, 100]);
     }
     
-    setTimeout(() => setFeedback(null), 800);
     setQuestion(getRandomQuestion());
-    setInput('');
     
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, 100);
+    // Faster feedback clear
+    setTimeout(() => setFeedback(null), 400);
   };
 
   const handleKeyDown = e => {
@@ -290,17 +501,31 @@ export default function TimesDuel() {
   const opponentPercent = 100 - playerPercent;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-4 py-8 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-200 font-sans">
-      <audio ref={musicRef} src="/hungarian_dance_no5.mp3" loop preload="auto" />
+    <div className={`game-shell ${gameActive ? 'game-shell--playing' : ''} ${hasStarted ? 'game-shell--match' : ''} flex flex-col items-center justify-center min-h-screen px-2 py-4 font-sans ${isMobile ? 'gap-4' : 'gap-6 px-4 py-8'}`}>
+      {/* Audio elements (relative paths) */}
+      {backgroundTracks.map((track, index) => (
+        <audio
+          key={track}
+          ref={element => { backgroundAudioRefs.current[index] = element; }}
+          src={audioUrl(track)}
+          loop
+          preload="auto"
+        />
+      ))}
+      <audio ref={correctRef} src={audioUrl('correct.mp3')} preload="auto" />
+      <audio ref={wrongRef}   src={audioUrl('wrong.mp3')} preload="auto" />
+      <audio ref={victoryRef} src={audioUrl('victory.mp3')} preload="auto" />
+      <audio ref={loseRef}    src={audioUrl('lose.mp3')} preload="auto" />
+      <audio ref={introRef}   src={audioUrl('intro.mp3')} preload="auto" loop />
 
-      <div className="text-center">
-        <h1 className="text-6xl font-extrabold tracking-wide text-indigo-700 drop-shadow-xl animate-pulse">
+      <div className="game-title text-center">
+        <h1 className={`font-extrabold tracking-wide text-indigo-700 drop-shadow-xl animate-pulse ${isMobile ? 'text-5xl' : 'text-6xl'}`}>
           × Duel
         </h1>
         <div className="text-sm text-gray-600 mt-1">Multiplication Battle Arena</div>
       </div>
 
-      <div className="flex flex-wrap gap-4 text-lg font-medium text-gray-800 items-center justify-center">
+      <div className="score-pills flex flex-wrap gap-4 text-lg font-medium text-gray-800 items-center justify-center">
         <span className="flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full">
           🏆 You: <span className="text-green-700 font-bold">{playerWins}</span>
         </span>
@@ -314,7 +539,21 @@ export default function TimesDuel() {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2 justify-center">
+      <div className="utility-actions flex flex-wrap gap-2 justify-center">
+        {hasStarted && (
+          <button 
+            onClick={goHome}
+            className="px-3 py-1 border text-sm rounded-full bg-white hover:bg-gray-200 transition shadow-sm"
+          >
+            🏠 Home
+          </button>
+        )}
+        <button 
+          onClick={unlockAudio}
+          className="px-3 py-1 border text-sm rounded-full bg-white hover:bg-gray-200 transition shadow-sm"
+        >
+          {audioEnabled ? '🔊 Sound' : '🔇 Sound'}
+        </button>
         <button 
           onClick={resetTally} 
           className="px-3 py-1 border text-sm rounded-full bg-white hover:bg-gray-200 transition shadow-sm"
@@ -340,14 +579,15 @@ export default function TimesDuel() {
         <div className="flex flex-col gap-4 items-center">
           <div className="flex gap-4">
             <button 
-              onClick={startGame} 
-              className="px-8 py-4 bg-gradient-to-r from-green-400 to-green-600 text-white text-xl rounded-full shadow-xl hover:scale-105 transition-all"
+              onPointerDown={handleStartPointerDown}
+              onClick={startGame}
+              className={`bg-gradient-to-r from-green-400 to-green-600 text-white rounded-full shadow-xl hover:scale-105 transition-all ${isMobile ? 'px-6 py-3 text-lg' : 'px-8 py-4 text-xl'}`}
             >
               vs CPU 🤖
             </button>
             <button 
               onClick={hostGame}
-              className="px-8 py-4 bg-gradient-to-r from-blue-400 to-blue-600 text-white text-xl rounded-full shadow-xl hover:scale-105 transition-all"
+              className={`bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded-full shadow-xl hover:scale-105 transition-all ${isMobile ? 'px-6 py-3 text-lg' : 'px-8 py-4 text-xl'}`}
             >
               vs Friend 👥
             </button>
@@ -358,9 +598,9 @@ export default function TimesDuel() {
               type="text" 
               placeholder="Enter room code" 
               className="border-2 border-gray-300 px-4 py-2 rounded-lg mr-2"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && e.target.value.trim()) {
-                  joinGame(e.target.value.trim().toUpperCase());
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                  joinGame(e.currentTarget.value.trim().toUpperCase());
                 }
               }}
             />
@@ -384,19 +624,23 @@ export default function TimesDuel() {
       )}
 
       {gameActive && !hasStarted && countdown !== null && (
-        <div className="text-8xl font-black text-gray-900 animate-bounce drop-shadow-lg">
+        <div className={`font-black text-gray-900 animate-bounce drop-shadow-lg ${isMobile ? 'text-6xl' : 'text-8xl'}`}>
           {countdown === 0 ? 'Go!' : countdown}
         </div>
       )}
 
       {hasStarted && (
-        <div className="w-full max-w-2xl space-y-6">
-          <div className="w-full">
-            <div className="flex justify-between text-lg font-semibold text-gray-700 mb-2">
+        <div className="game-board w-full max-w-2xl space-y-6">
+          <div className="tug-meter w-full">
+            <div className={`timer-row flex justify-between font-semibold text-gray-700 mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
               <span className="text-green-700">You: {playerTime}s</span>
               <span className="text-purple-600">Game: {Math.floor(totalGameTime / 60)}:{(totalGameTime % 60).toString().padStart(2, '0')}</span>
               <span className="text-red-700">{gameMode === 'cpu' ? 'CPU' : 'Friend'}: {opponentTime}s</span>
             </div>
+            {/* Jousting knights ride directly on top of the tug bar. The gif's own
+                frames charge the two riders toward each other; it shares the bar's
+                grid column so it stays locked to the bar at every screen size. */}
+            <img src={knightsGif} className="tug-knights" alt="" aria-hidden="true" draggable="false" />
             <div className="relative w-full h-8 bg-white border-2 border-gray-300 rounded-full overflow-hidden shadow-inner">
               <div 
                 className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-500 ease-out" 
@@ -412,54 +656,74 @@ export default function TimesDuel() {
             </div>
           </div>
 
-          <div className="text-center">
-            <div className="text-4xl font-bold text-gray-900 mb-6">
+          <div className="question-panel text-center">
+            <div className={`question-text font-bold text-gray-900 mb-6 ${isMobile ? 'text-2xl' : 'text-4xl'}`}>
               What is <span className="text-blue-600">{question.a}</span> × <span className="text-blue-600">{question.b}</span>?
             </div>
 
-            <div className="flex gap-4 items-center justify-center">
+            <div className="answer-row">
               <input
                 ref={inputRef}
-                type="number"
-                className="border-3 border-blue-300 p-4 rounded-xl text-xl shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                enterKeyHint="done"
+                maxLength="3"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
+                className="answer-input border-3 border-blue-300 rounded-xl shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all"
                 value={input}
-                onChange={e => setInput(e.target.value)}
+                onChange={e => setInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
                 onKeyDown={handleKeyDown}
+                onBlur={(e) => {
+                  // Prevent keyboard from closing on mobile
+                  if (isMobile && status === 'Playing...') {
+                    setTimeout(() => e.target.focus(), 0);
+                  }
+                }}
                 autoFocus
                 placeholder="?"
               />
               <button
                 onClick={handleSubmit}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 py-4 rounded-xl text-xl font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all"
+                className="submit-button bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all"
                 disabled={!input.trim() || status !== 'Playing...'}
               >
                 Submit
               </button>
             </div>
+            
+            {isMobile && (
+              <div className="answer-hint text-sm text-blue-600 mt-2">
+                💡 Tap Submit or press Enter on keypad
+              </div>
+            )}
           </div>
 
           {feedback && (
-            <div className="text-center">
-              <div className="text-8xl animate-bounce">{feedback}</div>
+            <div className="feedback-pop text-center" aria-live="polite">
+              <div className={`animate-bounce ${isMobile ? 'text-6xl' : 'text-8xl'}`}>{feedback}</div>
             </div>
           )}
 
           {streak >= 3 && (
-            <div className="text-center">
+            <div className="streak-badge text-center">
               <div className="inline-block bg-orange-100 border-2 border-orange-400 text-orange-800 px-4 py-2 rounded-full text-lg font-bold animate-pulse">
                 🔥 {streak} Streak!
               </div>
             </div>
           )}
 
-          <div className="text-center text-2xl font-bold text-gray-800">
+          <div className="status-text text-center text-2xl font-bold text-gray-800">
             {status}
           </div>
 
           {(status === 'You Won!' || status === 'You Lost!' || status === "It's a Tie!") && !showWinnerModal && (
             <div className="text-center">
               <button 
-                onClick={startGame} 
+                onPointerDown={handleStartPointerDown}
+                onClick={startGame}
                 className="px-8 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-lg rounded-full hover:from-purple-600 hover:to-purple-700 shadow-lg transform hover:scale-105 transition-all"
               >
                 🔁 Play Again
@@ -472,7 +736,22 @@ export default function TimesDuel() {
       {/* Winner Modal */}
       {showWinnerModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full animate-bounce">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full" style={{animation: 'slowBounce 2s ease-in-out infinite'}}>
+          <style>
+            {`
+              @keyframes slowBounce {
+                0%, 20%, 50%, 80%, 100% {
+                  transform: translateY(0);
+                }
+                40% {
+                  transform: translateY(-10px);
+                }
+                60% {
+                  transform: translateY(-5px);
+                }
+              }
+            `}
+          </style>
             <div className="text-center">
               <div className="text-6xl mb-4">
                 {gameStats.won ? '🎉' : '😢'}
