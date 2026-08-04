@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 import knightsSprite from './knights-sprite.png';
+import sparklesSprite from './sparkles-sprite.png';
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const audioUrl = file => `${import.meta.env.BASE_URL}${file}`;
 
@@ -129,6 +135,105 @@ export default function TimesDuel() {
   const currentBackgroundTrackRef = useRef(null);
   const introUnlockedRef = useRef(false);
   const startingGameRef = useRef(false);
+
+  // Game-feel refs
+  const barRef = useRef(null);
+  const knightsRef = useRef(null);
+  const dividerRef = useRef(null);
+  const feedbackRef = useRef(null);
+  const questionPlateRef = useRef(null);
+  const floatLayerRef = useRef(null);
+
+  // Floating "+2s" / "-2s" chip that shows the answer's actual effect on the clock.
+  const spawnFloater = (text, tone) => {
+    const layer = floatLayerRef.current;
+    if (!layer || prefersReducedMotion()) return;
+    const el = document.createElement('div');
+    el.className = `floater floater--${tone}`;
+    el.textContent = text;
+    layer.appendChild(el);
+    gsap.fromTo(el,
+      { y: 0, opacity: 0, scale: 0.7 },
+      {
+        y: -70, opacity: 1, scale: 1, duration: 0.28, ease: 'back.out(2.2)',
+        onComplete: () => {
+          gsap.to(el, {
+            y: -110, opacity: 0, duration: 0.42, ease: 'power2.in',
+            onComplete: () => el.remove()
+          });
+        }
+      }
+    );
+  };
+
+  // One-shot firework burst. Deliberately reserved for earned moments (streak
+  // milestones and victory) — firing it on every correct answer would make it
+  // wallpaper and drown out the tick badge.
+  const spawnSparkles = () => {
+    if (prefersReducedMotion()) return;
+    const host = document.body;
+    const el = document.createElement('div');
+    el.className = 'sparkle-burst';
+    const strip = document.createElement('img');
+    strip.className = 'sparkle-burst__strip';
+    strip.src = sparklesSprite;
+    strip.alt = '';
+    el.appendChild(strip);
+    host.appendChild(el);
+    // 30 frames stepped once through, then cleaned up.
+    gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.14, ease: 'power2.out' });
+    gsap.to(el, {
+      opacity: 0, duration: 0.35, delay: 1.1, ease: 'power2.in',
+      onComplete: () => el.remove()
+    });
+  };
+
+  // One coordinated reaction per answer: the bar takes the hit, the knights
+  // lunge or recoil, and the feedback icon pops. Keeps art and mechanic in sync.
+  const playAnswerReaction = isCorrect => {
+    if (prefersReducedMotion()) return;
+    const tone = isCorrect ? '#22c55e' : '#ef4444';
+
+    if (barRef.current) {
+      gsap.fromTo(barRef.current,
+        { scaleY: 1 },
+        { scaleY: 1.16, duration: 0.11, ease: 'power2.out', yoyo: true, repeat: 1 }
+      );
+      gsap.fromTo(barRef.current,
+        { boxShadow: `0 0 0px 0px ${tone}00` },
+        { boxShadow: `0 0 22px 5px ${tone}88`, duration: 0.16, yoyo: true, repeat: 1, ease: 'power2.out' }
+      );
+    }
+
+    if (dividerRef.current) {
+      gsap.fromTo(dividerRef.current,
+        { scaleY: 1 },
+        { scaleY: 1.9, duration: 0.14, ease: 'back.out(3)', yoyo: true, repeat: 1 }
+      );
+    }
+
+    // Knights drive forward on a correct answer, get shoved back on a wrong one.
+    if (knightsRef.current) {
+      gsap.fromTo(knightsRef.current,
+        { x: 0 },
+        { x: isCorrect ? 12 : -12, duration: 0.13, ease: 'power3.out', yoyo: true, repeat: 1 }
+      );
+    }
+
+    if (!isCorrect && inputRef.current) {
+      gsap.fromTo(inputRef.current,
+        { x: 0 },
+        { x: 8, duration: 0.06, ease: 'none', yoyo: true, repeat: 5, clearProps: 'x' }
+      );
+    }
+
+    if (isCorrect && questionPlateRef.current) {
+      gsap.fromTo(questionPlateRef.current,
+        { scale: 1 },
+        { scale: 1.045, duration: 0.12, ease: 'power2.out', yoyo: true, repeat: 1 }
+      );
+    }
+  };
 
   // Mobile detection
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -319,6 +424,8 @@ export default function TimesDuel() {
         setTimeout(() => {
           victoryRef.current?.play().catch(()=>{});
         }, 100);
+        spawnSparkles();
+        setTimeout(spawnSparkles, 420);
       } else if (winner === 'opponent') {
         setTimeout(() => {
           loseRef.current?.play().catch(()=>{});
@@ -351,6 +458,56 @@ export default function TimesDuel() {
     document.body.classList.toggle('is-playing', gameActive);
     return () => document.body.classList.remove('is-playing');
   }, [gameActive]);
+
+  // Every button gets a physical press response, delegated so it covers buttons
+  // that mount later (modals, play-again) without wiring each one by hand.
+  useEffect(() => {
+    if (prefersReducedMotion()) return;
+    const press = e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      gsap.to(btn, { scale: 0.94, duration: 0.09, ease: 'power2.out', overwrite: 'auto' });
+    };
+    const release = e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      gsap.to(btn, { scale: 1, duration: 0.34, ease: 'elastic.out(1, 0.5)', overwrite: 'auto' });
+    };
+    document.addEventListener('pointerdown', press, true);
+    document.addEventListener('pointerup', release, true);
+    document.addEventListener('pointercancel', release, true);
+    return () => {
+      document.removeEventListener('pointerdown', press, true);
+      document.removeEventListener('pointerup', release, true);
+      document.removeEventListener('pointercancel', release, true);
+    };
+  }, []);
+
+  // Countdown numerals punch in rather than looping a bounce.
+  useEffect(() => {
+    if (countdown === null || prefersReducedMotion()) return;
+    const el = document.querySelector('.countdown-number');
+    if (!el) return;
+    const tween = gsap.fromTo(el,
+      { scale: 0.4, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(2.5)' }
+    );
+    return () => tween.kill();
+  }, [countdown]);
+
+  // Feedback badge: a single settle-in-and-out pop, rather than looping bounce.
+  useEffect(() => {
+    if (!feedback || !feedbackRef.current || prefersReducedMotion()) return;
+    const el = feedbackRef.current;
+    const tl = gsap.timeline();
+    tl.fromTo(el,
+      { scale: 0.3, opacity: 0, rotate: -18 },
+      { scale: 1.12, opacity: 1, rotate: 0, duration: 0.22, ease: 'back.out(3)' }
+    )
+      .to(el, { scale: 1, duration: 0.12, ease: 'power2.out' })
+      .to(el, { scale: 0.85, opacity: 0, duration: 0.2, ease: 'power2.in' }, '+=0.12');
+    return () => tl.kill();
+  }, [feedback]);
 
   // Pin the play area to the visual viewport. On iOS Safari the keyboard does not
   // shrink the layout viewport — it scrolls it — so the top of the page (the tug
@@ -482,22 +639,33 @@ export default function TimesDuel() {
       correctAnswers: prev.correctAnswers + (isCorrect ? 1 : 0)
     }));
     
+    playAnswerReaction(isCorrect);
+
     if (isCorrect) {
       setPlayerTime(t => t + 2);
       if (gameMode === 'cpu') setOpponentTime(t => Math.max(0, t - 2));
       setStreak(s => s + 1);
       correctRef.current?.play().catch(()=>{});
       vibrate([50]);
+      spawnFloater('+2s', 'good');
+      // Every 5th consecutive correct answer earns the burst.
+      const nextStreak = streak + 1;
+      if (nextStreak > 0 && nextStreak % 5 === 0) {
+        spawnSparkles();
+        spawnFloater(`🔥 ${nextStreak} STREAK`, 'good');
+        vibrate([40, 40, 80]);
+      }
     } else {
       setStreak(0);
       wrongRef.current?.play().catch(()=>{});
       vibrate([100, 50, 100]);
+      spawnFloater('miss', 'bad');
     }
-    
+
     setQuestion(getRandomQuestion());
-    
-    // Faster feedback clear
-    setTimeout(() => setFeedback(null), 400);
+
+    // Feedback icon animates itself out; this just clears the node afterwards.
+    setTimeout(() => setFeedback(null), 620);
   };
 
   const handleKeyDown = e => {
@@ -647,7 +815,7 @@ export default function TimesDuel() {
       )}
 
       {gameActive && !hasStarted && countdown !== null && (
-        <div className={`font-black text-gray-900 animate-bounce drop-shadow-lg ${isMobile ? 'text-6xl' : 'text-8xl'}`}>
+        <div key={countdown} className={`countdown-number font-black text-gray-900 drop-shadow-lg ${isMobile ? 'text-6xl' : 'text-8xl'}`}>
           {countdown === 0 ? 'Go!' : countdown}
         </div>
       )}
@@ -664,26 +832,29 @@ export default function TimesDuel() {
                 every screen size. Driven by a CSS sprite animation rather than an
                 animated GIF: iOS Safari pauses GIFs in Low Power Mode, but keeps
                 running CSS animations. */}
-            <div className="tug-knights" aria-hidden="true">
+            <div className="tug-knights" aria-hidden="true" ref={knightsRef}>
               <img src={knightsSprite} className="tug-knights__strip" alt="" draggable="false" />
             </div>
-            <div className="relative w-full h-8 bg-white border-2 border-gray-300 rounded-full overflow-hidden shadow-inner">
-              <div 
-                className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-500 ease-out" 
-                style={{ width: `${playerPercent}%` }} 
+            <div ref={barRef} className="tug-bar relative w-full h-8 bg-white border-2 border-gray-300 rounded-full overflow-hidden shadow-inner">
+              <div
+                className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-500 ease-out"
+                style={{ width: `${playerPercent}%` }}
               />
-              <div 
-                className="absolute right-0 top-0 h-full bg-gradient-to-l from-red-400 to-red-500 transition-all duration-500 ease-out" 
-                style={{ width: `${opponentPercent}%` }} 
+              <div
+                className="absolute right-0 top-0 h-full bg-gradient-to-l from-red-400 to-red-500 transition-all duration-500 ease-out"
+                style={{ width: `${opponentPercent}%` }}
               />
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-1 h-6 bg-gray-800 rounded-full"></div>
+                <div ref={dividerRef} className="w-1 h-6 bg-gray-800 rounded-full"></div>
               </div>
             </div>
+            {/* Floating +2s / miss chips rise from the bar, so the clock swing the
+                answer caused is visible where the tug-of-war actually happens. */}
+            <div className="floater-layer" ref={floatLayerRef} aria-hidden="true" />
           </div>
 
           <div className="question-panel text-center">
-            <div className={`question-text font-bold text-gray-900 mb-6 ${isMobile ? 'text-2xl' : 'text-4xl'}`}>
+            <div ref={questionPlateRef} className={`question-text font-bold text-gray-900 mb-6 ${isMobile ? 'text-2xl' : 'text-4xl'}`}>
               What is <span className="question-number">{question.a}</span> × <span className="question-number">{question.b}</span>?
             </div>
 
@@ -728,8 +899,13 @@ export default function TimesDuel() {
           </div>
 
           {feedback && (
-            <div className="feedback-pop text-center" aria-live="polite">
-              <div className={`animate-bounce ${isMobile ? 'text-6xl' : 'text-8xl'}`}>{feedback}</div>
+            <div className="feedback-pop" aria-live="polite">
+              <div
+                ref={feedbackRef}
+                className={`feedback-badge ${feedback === '✅' ? 'feedback-badge--good' : 'feedback-badge--bad'}`}
+              >
+                {feedback}
+              </div>
             </div>
           )}
 
