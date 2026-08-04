@@ -7,9 +7,22 @@ html, body {
   overscroll-behavior: none;
   touch-action: manipulation;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  background: #7fb0e6; /* fallback sky blue behind the image */
   color: #1f2937;
   overflow-x: hidden;
+}
+
+/* Only the root carries the fallback colour. Giving <body> an opaque background
+   too would paint it over body::before: a negative-z-index child paints above
+   the *stacking context's* background, but body's own background is a descendant
+   background drawn later. (It happened to work mid-game only because
+   body.is-playing is position: fixed, which makes body a stacking context and
+   flips the order.) */
+html {
+  background-color: #7fb0e6;
+}
+
+body {
+  background: transparent;
 }
 
 /* Sky background: fixed layer so it fills the viewport and never scrolls.
@@ -718,9 +731,29 @@ button:disabled {
   .modal-card { animation: none; }
 }
 
+/* Bare coloured text on a cloud photo was low-contrast and unreadable against
+   the light patches. Each readout becomes a HUD chip on its own opaque plate. */
 .timer-row {
-  align-items: baseline;
+  align-items: center;
   line-height: 1;
+  gap: 0.35rem;
+}
+
+.timer-row span {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 14px rgba(16, 32, 58, 0.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tug-meter .relative {
@@ -954,7 +987,12 @@ button:disabled {
 
   .timer-row {
     font-size: 0.78rem;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.35rem;
+    gap: 0.25rem;
+  }
+
+  .timer-row span {
+    padding: 0.24rem 0.5rem;
   }
 
   .tug-meter .h-8 {

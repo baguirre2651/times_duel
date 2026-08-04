@@ -466,7 +466,10 @@ export default function TimesDuel() {
     const press = e => {
       const btn = e.target.closest('button');
       if (!btn) return;
-      gsap.to(btn, { scale: 0.94, duration: 0.09, ease: 'power2.out', overwrite: 'auto' });
+      // Kept shallow on purpose: a deeper squash can pull the button's edge
+      // inside the press point, so pointerup lands outside and the click is
+      // dropped. 0.97 stays under the finger.
+      gsap.to(btn, { scale: 0.97, duration: 0.09, ease: 'power2.out', overwrite: 'auto' });
     };
     const release = e => {
       const btn = e.target.closest('button');
@@ -521,39 +524,75 @@ export default function TimesDuel() {
     // layout height on some versions and shrinks it on others.
     let baseline = vv ? vv.height : window.innerHeight;
 
-    const sync = () => {
-      const height = vv ? vv.height : window.innerHeight;
-      const offsetTop = vv ? vv.offsetTop : 0;
+    // Last applied values, so we can ignore the sub-pixel churn iOS emits while
+    // the keyboard slides in. Chasing every event makes the shell visibly wander.
+    let lastH = -1;
+    let lastTop = -1;
+    let frame = 0;
+
+    const apply = () => {
+      frame = 0;
+      const rawH = vv ? vv.height : window.innerHeight;
+      const rawTop = vv ? vv.offsetTop : 0;
+      const height = Math.round(rawH);
+      const offsetTop = Math.round(rawTop);
 
       if (height > baseline) baseline = height;
       const inset = Math.max(0, baseline - height);
 
-      root.style.setProperty('--app-h', `${height}px`);
-      root.style.setProperty('--vv-top', `${offsetTop}px`);
-      root.style.setProperty('--kb-inset', `${inset}px`);
-      root.classList.toggle('kb-open', inset > 120);
+      // Whole pixels only, and only when the change is big enough to matter.
+      if (Math.abs(height - lastH) >= 1) {
+        root.style.setProperty('--app-h', `${height}px`);
+        root.style.setProperty('--kb-inset', `${inset}px`);
+        root.classList.toggle('kb-open', inset > 120);
+        lastH = height;
+      }
+      if (Math.abs(offsetTop - lastTop) >= 2) {
+        root.style.setProperty('--vv-top', `${offsetTop}px`);
+        lastTop = offsetTop;
+      }
+    };
+
+    // Coalesce the burst of events iOS fires during the keyboard transition into
+    // one update per frame.
+    const sync = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(apply);
+    };
+
+    // The shell is already sized to sit above the keyboard, so Safari has no
+    // reason to scroll the layout viewport; clear any scroll it applied anyway,
+    // which is what pushed the tug bar off the top.
+    const unscroll = () => {
+      if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
+      sync();
     };
 
     // Orientation changes invalidate the baseline entirely.
     const resetBaseline = () => {
       baseline = 0;
-      requestAnimationFrame(sync);
+      lastH = -1;
+      lastTop = -1;
+      requestAnimationFrame(apply);
     };
 
-    sync();
+    apply();
     if (vv) {
       vv.addEventListener('resize', sync);
       vv.addEventListener('scroll', sync);
     }
     window.addEventListener('resize', sync);
+    window.addEventListener('scroll', unscroll, { passive: true });
     window.addEventListener('orientationchange', resetBaseline);
 
     return () => {
+      if (frame) cancelAnimationFrame(frame);
       if (vv) {
         vv.removeEventListener('resize', sync);
         vv.removeEventListener('scroll', sync);
       }
       window.removeEventListener('resize', sync);
+      window.removeEventListener('scroll', unscroll);
       window.removeEventListener('orientationchange', resetBaseline);
       root.classList.remove('kb-open');
       root.style.removeProperty('--vv-top');
