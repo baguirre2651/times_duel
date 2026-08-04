@@ -547,10 +547,7 @@ export default function TimesDuel() {
         root.classList.toggle('kb-open', inset > 120);
         lastH = height;
       }
-      if (Math.abs(offsetTop - lastTop) >= 2) {
-        root.style.setProperty('--vv-top', `${offsetTop}px`);
-        lastTop = offsetTop;
-      }
+      lastTop = offsetTop;
     };
 
     // Coalesce the burst of events iOS fires during the keyboard transition into
@@ -558,14 +555,6 @@ export default function TimesDuel() {
     const sync = () => {
       if (frame) return;
       frame = requestAnimationFrame(apply);
-    };
-
-    // The shell is already sized to sit above the keyboard, so Safari has no
-    // reason to scroll the layout viewport; clear any scroll it applied anyway,
-    // which is what pushed the tug bar off the top.
-    const unscroll = () => {
-      if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
-      sync();
     };
 
     // Orientation changes invalidate the baseline entirely.
@@ -582,7 +571,6 @@ export default function TimesDuel() {
       vv.addEventListener('scroll', sync);
     }
     window.addEventListener('resize', sync);
-    window.addEventListener('scroll', unscroll, { passive: true });
     window.addEventListener('orientationchange', resetBaseline);
 
     return () => {
@@ -592,12 +580,26 @@ export default function TimesDuel() {
         vv.removeEventListener('scroll', sync);
       }
       window.removeEventListener('resize', sync);
-      window.removeEventListener('scroll', unscroll);
       window.removeEventListener('orientationchange', resetBaseline);
       root.classList.remove('kb-open');
-      root.style.removeProperty('--vv-top');
     };
   }, []);
+
+  // Nudge the answer row into view when the keypad opens. Safari usually does
+  // this itself now that the body is no longer locked; this covers the case
+  // where the keyboard animation finishes after its scroll.
+  useEffect(() => {
+    if (!hasStarted) return;
+    const el = inputRef.current;
+    if (!el) return;
+    const onFocus = () => {
+      setTimeout(() => {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 300);
+    };
+    el.addEventListener('focus', onFocus);
+    return () => el.removeEventListener('focus', onFocus);
+  }, [hasStarted]);
 
   useEffect(() => {
     const unlockIntro = () => {
