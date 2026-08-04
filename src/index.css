@@ -305,7 +305,7 @@ button:disabled {
   max-width: 100%;
   min-height: var(--app-h, 100svh);
   justify-content: flex-start;
-  gap: clamp(0.6rem, 1.5vh, 1rem);
+  gap: clamp(0.5rem, 1.2vh, 0.75rem);
   padding-top: max(0.45rem, env(safe-area-inset-top));
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
@@ -393,17 +393,18 @@ button:disabled {
   --answer-block-h: calc(clamp(4rem, 10vw, 5.25rem) + 1.5rem);
 }
 
+/* Flex column, not grid. A sticky grid item is confined to its own grid area,
+   and the meter's row is only as tall as the meter — so it had nowhere to stick
+   and scrolled away with the page. In a flex column the containing block is the
+   whole tall board, so the HUD can stay pinned while the rest scrolls. */
+/* A compact stack: bar, question, answer — grouped together with small gaps.
+   It must NOT stretch to fill the shell; stretching is what spread the three
+   apart with voids of empty sky between them. */
 .game-shell--match .game-board {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  grid-template-columns: minmax(0, 1fr);
-  grid-auto-columns: minmax(0, 1fr);
-  gap: clamp(0.75rem, 3vh, 1.75rem);
-  /* Must be flex-sized, never height: 100%. The shell is a column flex container
-     with the title row above this board, so 100% resolves to the full shell
-     height and pushes the answer row past the bottom, where overflow: hidden
-     clipped it off screen entirely — taking the input, and the keyboard, with it. */
-  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.6rem, 1.8vh, 1rem);
+  flex: 0 0 auto;
   height: auto;
   min-height: 0;
   position: relative;
@@ -416,21 +417,20 @@ button:disabled {
 /* Sticky, not fixed: the HUD stays on screen while the page scrolls for the
    keyboard, without taking the layout out of flow. */
 .game-shell--match .tug-meter {
-  grid-row: 1;
-  grid-column: 1;
-  position: sticky;
-  top: max(0.25rem, env(safe-area-inset-top));
-  z-index: 6;
+  flex: 0 0 auto;
 }
 
+/* Natural height, tight gap. The old `minmax(0,1fr) auto` put a full-height
+   filler row above the answer row, which floated the question in the middle of
+   an empty void and pushed the input to the far bottom edge. */
 .game-shell--match .question-panel {
-  grid-row: 2;
-  grid-column: 1;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  flex: 0 0 auto;
   min-height: 0;
-  gap: clamp(0.6rem, 2.5vh, 1.25rem);
+  gap: clamp(0.55rem, 1.6vh, 0.9rem);
 }
 
 /* Normal flow. Nothing clips it and the page scrolls, so Safari can lift it
@@ -451,8 +451,6 @@ button:disabled {
 /* Reads as a game HUD element rather than text floating on the sky, and the
    plate guarantees contrast wherever the clouds happen to sit behind it. */
 .game-shell--match .question-text {
-  align-self: center;
-  justify-self: center;
   min-height: 0;
   padding: clamp(0.7rem, 2.5vh, 1.15rem) clamp(1.1rem, 6vw, 2rem);
   background: rgba(255, 255, 255, 0.62);
@@ -585,10 +583,10 @@ button:disabled {
    re-sized the track — shifting the question sideways and up whenever a streak
    appeared or expired. Naming the cell explicitly allows the overlap. */
 .game-shell--match .streak-badge {
-  grid-row: 2;
-  grid-column: 1;
-  align-self: start;
-  justify-self: center;
+  position: absolute;
+  top: -0.25rem;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 3;
   pointer-events: none;
 }
