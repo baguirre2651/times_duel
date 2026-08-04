@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import knightsGif from './knights.gif';
+import knightsSprite from './knights-sprite.png';
 
 const audioUrl = file => `${import.meta.env.BASE_URL}${file}`;
 
@@ -352,20 +352,35 @@ export default function TimesDuel() {
     return () => document.body.classList.remove('is-playing');
   }, [gameActive]);
 
-  // Track the visual viewport so the play area shrinks to the space the on-screen
-  // keyboard leaves behind. dvh alone is unreliable on iOS Safari, which keeps
-  // reporting the full height while the keyboard is up.
+  // Pin the play area to the visual viewport. On iOS Safari the keyboard does not
+  // shrink the layout viewport — it scrolls it — so the top of the page (the tug
+  // bar) ends up above the visible area. Tracking visualViewport gives us both the
+  // usable height and how far Safari scrolled, so the shell can follow it exactly.
   useEffect(() => {
     const vv = window.visualViewport;
     const root = document.documentElement;
+    // Largest height seen without a keyboard, used as the no-keyboard baseline.
+    // Comparing against window.innerHeight is unreliable: iOS keeps it at the full
+    // layout height on some versions and shrinks it on others.
+    let baseline = vv ? vv.height : window.innerHeight;
 
     const sync = () => {
       const height = vv ? vv.height : window.innerHeight;
+      const offsetTop = vv ? vv.offsetTop : 0;
+
+      if (height > baseline) baseline = height;
+      const inset = Math.max(0, baseline - height);
+
       root.style.setProperty('--app-h', `${height}px`);
-      // How much of the layout viewport the keyboard is covering.
-      const inset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+      root.style.setProperty('--vv-top', `${offsetTop}px`);
       root.style.setProperty('--kb-inset', `${inset}px`);
       root.classList.toggle('kb-open', inset > 120);
+    };
+
+    // Orientation changes invalidate the baseline entirely.
+    const resetBaseline = () => {
+      baseline = 0;
+      requestAnimationFrame(sync);
     };
 
     sync();
@@ -374,7 +389,7 @@ export default function TimesDuel() {
       vv.addEventListener('scroll', sync);
     }
     window.addEventListener('resize', sync);
-    window.addEventListener('orientationchange', sync);
+    window.addEventListener('orientationchange', resetBaseline);
 
     return () => {
       if (vv) {
@@ -382,8 +397,9 @@ export default function TimesDuel() {
         vv.removeEventListener('scroll', sync);
       }
       window.removeEventListener('resize', sync);
-      window.removeEventListener('orientationchange', sync);
+      window.removeEventListener('orientationchange', resetBaseline);
       root.classList.remove('kb-open');
+      root.style.removeProperty('--vv-top');
     };
   }, []);
 
@@ -495,6 +511,13 @@ export default function TimesDuel() {
     setPlayerWins(0);
     setOpponentWins(0);
   };
+
+  const isTie = status === "It's a Tie!";
+  const resultSubtitle = isTie
+    ? 'Dead even — run it back.'
+    : gameStats.won
+      ? (gameStats.accuracy >= 90 ? 'Flawless riding. The field is yours.' : 'The duel is yours.')
+      : (gameStats.accuracy >= 70 ? 'So close — one more charge.' : 'Regroup and ride again.');
 
   const total = playerTime + opponentTime || 1;
   const playerPercent = (playerTime / total) * 100;
@@ -637,10 +660,13 @@ export default function TimesDuel() {
               <span className="text-purple-600">Game: {Math.floor(totalGameTime / 60)}:{(totalGameTime % 60).toString().padStart(2, '0')}</span>
               <span className="text-red-700">{gameMode === 'cpu' ? 'CPU' : 'Friend'}: {opponentTime}s</span>
             </div>
-            {/* Jousting knights ride directly on top of the tug bar. The gif's own
-                frames charge the two riders toward each other; it shares the bar's
-                grid column so it stays locked to the bar at every screen size. */}
-            <img src={knightsGif} className="tug-knights" alt="" aria-hidden="true" draggable="false" />
+            {/* Jousting knights ride directly on top of the tug bar, locked to it at
+                every screen size. Driven by a CSS sprite animation rather than an
+                animated GIF: iOS Safari pauses GIFs in Low Power Mode, but keeps
+                running CSS animations. */}
+            <div className="tug-knights" aria-hidden="true">
+              <img src={knightsSprite} className="tug-knights__strip" alt="" draggable="false" />
+            </div>
             <div className="relative w-full h-8 bg-white border-2 border-gray-300 rounded-full overflow-hidden shadow-inner">
               <div 
                 className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-500 ease-out" 
@@ -658,7 +684,7 @@ export default function TimesDuel() {
 
           <div className="question-panel text-center">
             <div className={`question-text font-bold text-gray-900 mb-6 ${isMobile ? 'text-2xl' : 'text-4xl'}`}>
-              What is <span className="text-blue-600">{question.a}</span> × <span className="text-blue-600">{question.b}</span>?
+              What is <span className="question-number">{question.a}</span> × <span className="question-number">{question.b}</span>?
             </div>
 
             <div className="answer-row">
@@ -735,46 +761,47 @@ export default function TimesDuel() {
 
       {/* Winner Modal */}
       {showWinnerModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full" style={{animation: 'slowBounce 2s ease-in-out infinite'}}>
-          <style>
-            {`
-              @keyframes slowBounce {
-                0%, 20%, 50%, 80%, 100% {
-                  transform: translateY(0);
-                }
-                40% {
-                  transform: translateY(-10px);
-                }
-                60% {
-                  transform: translateY(-5px);
-                }
-              }
-            `}
-          </style>
-            <div className="text-center">
-              <div className="text-6xl mb-4">
-                {gameStats.won ? '🎉' : '😢'}
-              </div>
-              <h2 className="text-3xl font-bold mb-4 text-gray-800">
-                {gameStats.won ? 'Victory!' : 'Defeat!'}
-              </h2>
-              
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <div className="text-sm text-gray-600 mb-2">Game Stats</div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>Questions: {gameStats.totalQuestions}</div>
-                  <div>Correct: {gameStats.correctAnswers}</div>
-                  <div>Accuracy: {gameStats.accuracy}%</div>
-                  <div>Time: {gameStats.duration}s</div>
-                </div>
-              </div>
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="result-title">
+          <div className={`modal-card result-card ${isTie ? 'result-card--tie' : gameStats.won ? 'result-card--won' : 'result-card--lost'}`}>
+            <div className="result-emoji" aria-hidden="true">
+              {isTie ? '🤝' : gameStats.won ? '🎉' : '😢'}
+            </div>
+            <h2 id="result-title" className="result-title">
+              {isTie ? "It's a Tie!" : gameStats.won ? 'Victory!' : 'Defeat!'}
+            </h2>
+            <p className="result-subtitle">{resultSubtitle}</p>
 
+            <div className="result-stats">
+              <div className="result-stat">
+                <div className="result-stat__value">{gameStats.correctAnswers}/{gameStats.totalQuestions}</div>
+                <div className="result-stat__label">Correct</div>
+              </div>
+              <div className="result-stat">
+                <div className="result-stat__value">{gameStats.accuracy}%</div>
+                <div className="result-stat__label">Accuracy</div>
+              </div>
+              <div className="result-stat">
+                <div className="result-stat__value">{gameStats.duration}s</div>
+                <div className="result-stat__label">Duration</div>
+              </div>
+              <div className="result-stat">
+                <div className="result-stat__value">{bestStreak}</div>
+                <div className="result-stat__label">Best Streak</div>
+              </div>
+            </div>
+
+            <div className="result-actions">
+              <button
+                onClick={() => { setShowWinnerModal(false); startGame(); }}
+                className="result-button"
+              >
+                🔁 Play Again
+              </button>
               <button
                 onClick={() => setShowWinnerModal(false)}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-full text-lg font-semibold transition-colors"
+                className="result-button result-button--ghost"
               >
-                Continue
+                Close
               </button>
             </div>
           </div>
@@ -783,8 +810,8 @@ export default function TimesDuel() {
 
       {/* History Modal */}
       {showHistory && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-96 overflow-y-auto">
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ padding: '1.5rem' }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">Question History</h3>
               <button 
@@ -815,8 +842,8 @@ export default function TimesDuel() {
 
       {/* Achievements Modal */}
       {showAchievements && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-96 overflow-y-auto">
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ padding: '1.5rem' }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">🏆 Achievements</h3>
               <button 
