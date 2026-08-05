@@ -66,7 +66,9 @@ body {
    scrollable document and the browser handles the keyboard. */
 body.is-playing {
   width: 100%;
-  overscroll-behavior: contain;
+  /* `none`, not `contain`: contain still allows iOS rubber-band bounce at the
+     edges, which reads as the screen wobbling while typing. */
+  overscroll-behavior: none;
 }
 
 
@@ -792,6 +794,10 @@ button:disabled {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Reserved width so the chips do not resize as the seconds tick from 9s to
+     10s, which shuffled the whole row sideways once a second. */
+  min-width: 5.5rem;
+  text-align: center;
 }
 
 .tug-meter .relative {

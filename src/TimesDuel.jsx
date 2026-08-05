@@ -585,18 +585,27 @@ export default function TimesDuel() {
     };
   }, []);
 
-  // Nudge the answer row into view when the keypad opens. Safari usually does
-  // this itself now that the body is no longer locked; this covers the case
-  // where the keyboard animation finishes after its scroll.
+  // Last-resort nudge if the keypad actually covers the input. This used to run
+  // on every focus with behavior: 'smooth' — and since each submitted answer
+  // refocuses the input, the page smooth-scrolled after every answer, which is
+  // what made the screen bounce while typing. Now it only fires when the input
+  // is genuinely hidden, and it jumps instantly rather than animating.
   useEffect(() => {
     if (!hasStarted) return;
     const el = inputRef.current;
     if (!el) return;
+
     const onFocus = () => {
       setTimeout(() => {
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      }, 300);
+        const vv = window.visualViewport;
+        const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+        const visibleTop = vv ? vv.offsetTop : 0;
+        const r = el.getBoundingClientRect();
+        const hidden = r.bottom > visibleBottom - 4 || r.top < visibleTop + 4;
+        if (hidden) el.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+      }, 350);
     };
+
     el.addEventListener('focus', onFocus);
     return () => el.removeEventListener('focus', onFocus);
   }, [hasStarted]);
