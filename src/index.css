@@ -557,7 +557,9 @@ button:disabled {
   height: 100%;
   width: 3000%;   /* 30 frames */
   max-width: none;
-  animation: sparkle-play 1.25s steps(30) 1 forwards;
+  /* Quick, because it now fires on every correct answer rather than on
+     milestones — a slow burst would still be on screen at the next question. */
+  animation: sparkle-play 0.78s steps(30) 1 forwards;
 }
 
 @keyframes sparkle-play {

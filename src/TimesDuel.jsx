@@ -166,12 +166,12 @@ export default function TimesDuel() {
     );
   };
 
-  // One-shot firework burst. Deliberately reserved for earned moments (streak
-  // milestones and victory) — firing it on every correct answer would make it
-  // wallpaper and drown out the tick badge.
+  // One-shot firework burst, fired on every correct answer. Any burst still on
+  // screen is removed first so rapid answers replace rather than stack.
   const spawnSparkles = () => {
     if (prefersReducedMotion()) return;
     const host = document.body;
+    host.querySelectorAll('.sparkle-burst').forEach(n => n.remove());
     const el = document.createElement('div');
     el.className = 'sparkle-burst';
     const strip = document.createElement('img');
@@ -181,9 +181,9 @@ export default function TimesDuel() {
     el.appendChild(strip);
     host.appendChild(el);
     // 30 frames stepped once through, then cleaned up.
-    gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.14, ease: 'power2.out' });
+    gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.08, ease: 'power2.out' });
     gsap.to(el, {
-      opacity: 0, duration: 0.35, delay: 1.1, ease: 'power2.in',
+      opacity: 0, duration: 0.22, delay: 0.68, ease: 'power2.in',
       onComplete: () => el.remove()
     });
   };
@@ -698,10 +698,10 @@ export default function TimesDuel() {
       correctRef.current?.play().catch(()=>{});
       vibrate([50]);
       spawnFloater('+2s', 'good');
-      // Every 5th consecutive correct answer earns the burst.
+      spawnSparkles();
+      // Streak milestones keep their extra flourish on top.
       const nextStreak = streak + 1;
       if (nextStreak > 0 && nextStreak % 5 === 0) {
-        spawnSparkles();
         spawnFloater(`🔥 ${nextStreak} STREAK`, 'good');
         vibrate([40, 40, 80]);
       }
