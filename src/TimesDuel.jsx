@@ -529,6 +529,7 @@ export default function TimesDuel() {
     let lastH = -1;
     let lastTop = -1;
     let frame = 0;
+    let kbWasOpen = false;
 
     const apply = () => {
       frame = 0;
@@ -542,9 +543,22 @@ export default function TimesDuel() {
 
       // Whole pixels only, and only when the change is big enough to matter.
       if (Math.abs(height - lastH) >= 1) {
+        const open = inset > 120;
         root.style.setProperty('--app-h', `${height}px`);
         root.style.setProperty('--kb-inset', `${inset}px`);
-        root.classList.toggle('kb-open', inset > 120);
+        root.classList.toggle('kb-open', open);
+
+        // Safari scrolls to reveal the input before the shell has resized, and
+        // the page stays scrolled afterwards, hiding the title and timers. Once
+        // the layout has been fitted to the keyboard band nothing needs to be
+        // scrolled, so put it back. Only on the transition, never continuously —
+        // fighting Safari on every scroll event is what broke this before.
+        if (open && !kbWasOpen) {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => window.scrollTo(0, 0));
+          });
+        }
+        kbWasOpen = open;
         lastH = height;
       }
       lastTop = offsetTop;

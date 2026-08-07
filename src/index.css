@@ -1079,17 +1079,59 @@ button:disabled {
 /* Keyboard-open state: the visual viewport has collapsed, so shed the
    non-essential chrome and tighten the hero so the tug bar, question and
    answer row all stay on screen together. */
+/* Keyboard open: fit the visible band exactly so nothing has to scroll. Safari
+   scrolls to reveal the input before the shell has resized, and the page stayed
+   scrolled afterwards — which is what pushed the title and the You/Game/CPU
+   chips off the top. Fitting removes the need for that scroll entirely.
+   No overflow: hidden here, so if it ever does not fit it still scrolls rather
+   than clipping the input away. */
+.kb-open .game-shell--playing {
+  height: var(--app-h, 100svh);
+  min-height: 0;
+  justify-content: center;
+  padding-top: max(0.25rem, env(safe-area-inset-top));
+  padding-bottom: 0.25rem;
+  gap: 0.4rem;
+}
+
 .kb-open .game-shell--match .answer-hint,
 .kb-open .game-shell--match .streak-badge {
   display: none;
 }
 
 .kb-open .game-shell--match .game-board {
-  gap: 0.5rem;
+  gap: 0.4rem;
+}
+
+/* Title shrinks rather than disappears, so there is still an anchor at the top. */
+.kb-open .game-shell--match .game-title {
+  padding: 0.1rem 0.5rem;
+}
+
+.kb-open .game-shell--match .game-title h1 {
+  font-size: 1.35rem;
+}
+
+.kb-open .timer-row {
+  font-size: 0.72rem;
+  margin-bottom: 0.15rem;
+}
+
+.kb-open .timer-row span {
+  padding: 0.18rem 0.45rem;
+  min-width: 4.6rem;
 }
 
 .kb-open .game-shell--match .question-panel {
-  gap: 0.5rem;
+  gap: 0.4rem;
+}
+
+.kb-open .game-shell--match .question-text {
+  padding: 0.4rem 0.9rem;
+}
+
+.kb-open .answer-row {
+  --control-h: 3rem;
 }
 
 .kb-open .game-shell--match .question-text {
@@ -1098,8 +1140,8 @@ button:disabled {
 
 .kb-open .game-shell--match .tug-knights {
   /* Knights shrink rather than disappear, so the bar stays readable. */
-  justify-self: center;
-  width: min(100%, 15rem);
+  align-self: center;
+  width: min(100%, 11rem);
 }
 
 .kb-open .game-shell--match .feedback-pop > div {
