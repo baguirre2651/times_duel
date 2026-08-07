@@ -1062,8 +1062,10 @@ button:disabled {
   .answer-row {
     --control-h: 3.55rem;
     gap: 0.6rem;
-    width: 100%;
-    grid-template-columns: minmax(0, 1fr) minmax(5.8rem, 7rem);
+    /* Clearly inset from both edges so the pair reads as one centred control
+       rather than stretching across the screen. */
+    width: min(100%, 18rem);
+    grid-template-columns: minmax(0, 1fr) minmax(5rem, 5.75rem);
   }
 
   .submit-button {
@@ -1139,8 +1141,11 @@ button:disabled {
 }
 
 .kb-open .game-shell--match .tug-knights {
-  /* Knights shrink rather than disappear, so the bar stays readable. */
-  align-self: center;
+  /* Knights shrink rather than disappear, so the bar stays readable.
+     justify-self, not align-self: this is a grid item, so align-self is the
+     vertical axis. With an explicit width the inherited justify-self: stretch
+     resolves to start, which left-aligned them. */
+  justify-self: center;
   width: min(100%, 11rem);
 }
 
