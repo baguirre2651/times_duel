@@ -564,9 +564,29 @@ export default function TimesDuel() {
       lastTop = offsetTop;
     };
 
+    // The one-shot scrollTo above fires mid-transition, and iOS scrolls to the
+    // input again once the keyboard finishes sliding in — leaving the title,
+    // timers and knights above the visible band. So once events go quiet, if the
+    // board fits the band (nothing legitimately needs scrolling), undo any
+    // leftover scroll. Runs once per settle, never per event, so it can't fight
+    // Safari mid-animation; and since the whole board — input included — fits,
+    // Safari has no reason to scroll back.
+    let settleTimer = 0;
+    const settle = () => {
+      settleTimer = 0;
+      if (!root.classList.contains('kb-open')) return;
+      const bandH = vv ? vv.height : window.innerHeight;
+      const shell = document.querySelector('.game-shell--playing');
+      if (!shell || shell.scrollHeight > bandH + 1) return;
+      const scrolled = window.scrollY + (vv ? vv.offsetTop : 0);
+      if (scrolled > 1) window.scrollTo(0, 0);
+    };
+
     // Coalesce the burst of events iOS fires during the keyboard transition into
     // one update per frame.
     const sync = () => {
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(settle, 180);
       if (frame) return;
       frame = requestAnimationFrame(apply);
     };
@@ -589,6 +609,7 @@ export default function TimesDuel() {
 
     return () => {
       if (frame) cancelAnimationFrame(frame);
+      if (settleTimer) clearTimeout(settleTimer);
       if (vv) {
         vv.removeEventListener('resize', sync);
         vv.removeEventListener('scroll', sync);
