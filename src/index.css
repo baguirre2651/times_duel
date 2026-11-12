@@ -533,10 +533,13 @@ button:disabled {
   transform-origin: center center;
 }
 
-/* One-shot firework burst, stepped through a 30-frame strip so it keeps playing
-   in iOS Low Power Mode (which pauses animated GIFs). Uses translateX rather than
-   background-position: percentage positioning maps steps(N) onto N-1 frames and
-   would land between frames. */
+/* One-shot firework burst, stepped through a 30-frame sheet (6000x220) so it
+   keeps playing in iOS Low Power Mode (which pauses animated GIFs). The sheet is
+   the element's background, stepped with background-position. It used to be a
+   3000%-wide child slid with transform: an ~8,000px-wide composited layer that
+   iOS Safari can fail to draw, so the burst never appeared on iPhones.
+   With a 3000% background, frame k sits at k/29; ending at 30/29 (103.4483%)
+   with 30 steps lands on each whole frame in turn. */
 .sparkle-burst {
   position: fixed;
   left: 50%;
@@ -548,23 +551,18 @@ button:disabled {
   pointer-events: none;
   z-index: 60;
   will-change: opacity;
-}
-
-.sparkle-burst__strip {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 3000%;   /* 30 frames */
-  max-width: none;
-  /* Quick, because it now fires on every correct answer rather than on
+  background-image: url('./sparkles-sprite.png');
+  background-repeat: no-repeat;
+  background-size: 3000% 100%;
+  background-position: 0 0;
+  /* Quick, because it fires on every correct answer rather than on
      milestones — a slow burst would still be on screen at the next question. */
   animation: sparkle-play 0.78s steps(30) 1 forwards;
 }
 
 @keyframes sparkle-play {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-100%); }
+  from { background-position: 0 0; }
+  to   { background-position: 103.4483% 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1140,12 +1138,12 @@ button:disabled {
 }
 
 .kb-open .game-shell--match .tug-knights {
-  /* Knights shrink rather than disappear, so the bar stays readable.
-     justify-self, not align-self: this is a grid item, so align-self is the
-     vertical axis. With an explicit width the inherited justify-self: stretch
-     resolves to start, which left-aligned them. */
+  /* Scale with the visible height instead of a fixed tiny cap: the frame is
+     420x94 (4.47:1), so width = 0.85 x height gives a knights strip about 19% of
+     the visible band tall, and it still never exceeds the bar's width. justify-self,
+     not align-self: this is a grid item, so align-self is the vertical axis. */
   justify-self: center;
-  width: min(100%, 11rem);
+  width: min(100%, calc(var(--app-h, 100svh) * 0.85));
 }
 
 .kb-open .game-shell--match .feedback-pop > div {
@@ -1157,10 +1155,6 @@ button:disabled {
    must NOT be hidden there: they just get smaller. Only a genuinely short
    landscape view drops them, before the tug bar itself is compromised. */
 @media (max-height: 480px) {
-  .kb-open .game-shell--match .tug-knights {
-    width: min(100%, 8rem);
-  }
-
   .kb-open .game-shell--match .timer-row {
     font-size: 0.72rem;
     margin-bottom: 0.15rem;

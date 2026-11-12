@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import sparklesSprite from './sparkles-sprite.png';
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
@@ -173,11 +172,6 @@ export default function TimesDuel() {
     host.querySelectorAll('.sparkle-burst').forEach(n => n.remove());
     const el = document.createElement('div');
     el.className = 'sparkle-burst';
-    const strip = document.createElement('img');
-    strip.className = 'sparkle-burst__strip';
-    strip.src = sparklesSprite;
-    strip.alt = '';
-    el.appendChild(strip);
     host.appendChild(el);
     // 30 frames stepped once through, then cleaned up.
     gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.08, ease: 'power2.out' });
