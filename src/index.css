@@ -603,8 +603,12 @@ button:disabled {
   gap: 0;
 }
 
-/* Viewport onto one frame of the sprite strip. Sized by the source frame's
-   420x94 ratio so it always spans the bar exactly, at any width. */
+/* Sprite sheet: 24 frames side by side (10080x94). The element itself is the
+   viewport and the sheet is its background, stepped one frame at a time with
+   background-position. Deliberately NOT a 2400%-wide child slid with transform:
+   that makes an ~8,500px-wide composited layer, which iOS Safari can fail to
+   draw at all. A background-position animation needs no oversized layer.
+   Sized by the frame's 420x94 ratio so it spans the bar at any width. */
 .tug-knights {
   position: relative;
   justify-self: stretch;
@@ -612,31 +616,26 @@ button:disabled {
   aspect-ratio: 420 / 94;
   overflow: hidden;
   margin-bottom: -0.15rem; /* hooves land on the bar's top edge */
+  background-image: url('./knights-sprite.png');
+  background-repeat: no-repeat;
+  background-size: 2400% 100%;
+  background-position: 0 0;
+  image-rendering: pixelated; /* stays crisp when the pixel art scales up */
   pointer-events: none;
   user-select: none;
-}
-
-/* 24 frames laid out horizontally, so the strip is 24x the frame width. Each
-   step shifts it by exactly one container width, landing on one whole frame. */
-.tug-knights__strip {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 2400%;
-  max-width: none;
-  image-rendering: pixelated; /* stays crisp when the pixel art scales up */
-  -webkit-user-drag: none;
+  -webkit-user-select: none;
   animation: knight-joust 2.4s steps(24) infinite;
 }
 
+/* With a 2400% background, p% positions frame k at p = k/23. Ending at 24/23
+   (104.3478%) with 24 steps visits frames 0..23 exactly, then loops. */
 @keyframes knight-joust {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-100%); }
+  from { background-position: 0 0; }
+  to   { background-position: 104.3478% 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tug-knights__strip {
+  .tug-knights {
     animation: none;
   }
 }

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import knightsSprite from './knights-sprite.png';
 import sparklesSprite from './sparkles-sprite.png';
 
 const prefersReducedMotion = () =>
@@ -917,9 +916,7 @@ export default function TimesDuel() {
                 every screen size. Driven by a CSS sprite animation rather than an
                 animated GIF: iOS Safari pauses GIFs in Low Power Mode, but keeps
                 running CSS animations. */}
-            <div className="tug-knights" aria-hidden="true" ref={knightsRef}>
-              <img src={knightsSprite} className="tug-knights__strip" alt="" draggable="false" />
-            </div>
+            <div className="tug-knights" aria-hidden="true" ref={knightsRef} />
             <div ref={barRef} className="tug-bar relative w-full h-8 bg-white border-2 border-gray-300 rounded-full overflow-hidden shadow-inner">
               <div
                 className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-500 ease-out"
