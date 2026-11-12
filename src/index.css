@@ -1152,16 +1152,26 @@ button:disabled {
   font-size: 3rem;
 }
 
-/* Very short landscape / small phones with the keyboard up: drop the knights
-   entirely before the tug bar itself is compromised. */
+/* Short screens with the keyboard up. Browsers that shrink the layout viewport
+   for the keyboard (Android, some iOS) land here in portrait too, so the knights
+   must NOT be hidden there: they just get smaller. Only a genuinely short
+   landscape view drops them, before the tug bar itself is compromised. */
 @media (max-height: 480px) {
   .kb-open .game-shell--match .tug-knights {
-    display: none;
+    width: min(100%, 8rem);
   }
 
   .kb-open .game-shell--match .timer-row {
     font-size: 0.72rem;
     margin-bottom: 0.15rem;
+  }
+}
+
+/* Width, not `orientation`: a portrait phone with the keyboard up is wider than
+   it is tall, so orientation reads as landscape. Real landscape phones are 560px+. */
+@media (max-height: 480px) and (min-width: 560px) {
+  .kb-open .game-shell--match .tug-knights {
+    display: none;
   }
 }
 
