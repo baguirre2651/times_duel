@@ -522,7 +522,6 @@ export default function TimesDuel() {
     let lastH = -1;
     let lastTop = -1;
     let frame = 0;
-    let kbWasOpen = false;
 
     const apply = () => {
       frame = 0;
@@ -541,45 +540,17 @@ export default function TimesDuel() {
         root.style.setProperty('--kb-inset', `${inset}px`);
         root.classList.toggle('kb-open', open);
 
-        // Safari scrolls to reveal the input before the shell has resized, and
-        // the page stays scrolled afterwards, hiding the title and timers. Once
-        // the layout has been fitted to the keyboard band nothing needs to be
-        // scrolled, so put it back. Only on the transition, never continuously —
-        // fighting Safari on every scroll event is what broke this before.
-        if (open && !kbWasOpen) {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => window.scrollTo(0, 0));
-          });
-        }
-        kbWasOpen = open;
         lastH = height;
       }
-      lastTop = offsetTop;
-    };
-
-    // The one-shot scrollTo above fires mid-transition, and iOS scrolls to the
-    // input again once the keyboard finishes sliding in — leaving the title,
-    // timers and knights above the visible band. So once events go quiet, if the
-    // board fits the band (nothing legitimately needs scrolling), undo any
-    // leftover scroll. Runs once per settle, never per event, so it can't fight
-    // Safari mid-animation; and since the whole board — input included — fits,
-    // Safari has no reason to scroll back.
-    let settleTimer = 0;
-    const settle = () => {
-      settleTimer = 0;
-      if (!root.classList.contains('kb-open')) return;
-      const bandH = vv ? vv.height : window.innerHeight;
-      const shell = document.querySelector('.game-shell--playing');
-      if (!shell || shell.scrollHeight > bandH + 1) return;
-      const scrolled = window.scrollY + (vv ? vv.offsetTop : 0);
-      if (scrolled > 1) window.scrollTo(0, 0);
+      if (Math.abs(offsetTop - lastTop) >= 1) {
+        root.style.setProperty('--vv-top', `${offsetTop}px`);
+        lastTop = offsetTop;
+      }
     };
 
     // Coalesce the burst of events iOS fires during the keyboard transition into
-    // one update per frame.
+    // one update per frame. Follow the viewport instead of forcing page scrolls.
     const sync = () => {
-      if (settleTimer) clearTimeout(settleTimer);
-      settleTimer = setTimeout(settle, 180);
       if (frame) return;
       frame = requestAnimationFrame(apply);
     };
@@ -589,7 +560,8 @@ export default function TimesDuel() {
       baseline = 0;
       lastH = -1;
       lastTop = -1;
-      requestAnimationFrame(apply);
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(apply);
     };
 
     apply();
@@ -602,7 +574,6 @@ export default function TimesDuel() {
 
     return () => {
       if (frame) cancelAnimationFrame(frame);
-      if (settleTimer) clearTimeout(settleTimer);
       if (vv) {
         vv.removeEventListener('resize', sync);
         vv.removeEventListener('scroll', sync);
@@ -699,7 +670,7 @@ export default function TimesDuel() {
     
     // IMMEDIATE refocus to keep keyboard open
     if (inputRef.current) {
-      inputRef.current.focus();
+      inputRef.current.focus({ preventScroll: true });
     }
     
     // Heavy processing after UI updates
@@ -949,16 +920,12 @@ export default function TimesDuel() {
                 value={input}
                 onChange={e => setInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
                 onKeyDown={handleKeyDown}
-                onBlur={(e) => {
-                  // Prevent keyboard from closing on mobile
-                  if (isMobile && status === 'Playing...') {
-                    setTimeout(() => e.target.focus(), 0);
-                  }
-                }}
                 autoFocus
+                aria-label="Your answer"
                 placeholder="?"
               />
               <button
+                onPointerDown={event => event.preventDefault()}
                 onClick={handleSubmit}
                 className="submit-button bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all"
                 disabled={!input.trim() || status !== 'Playing...'}
